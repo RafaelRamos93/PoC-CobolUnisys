@@ -1,0 +1,29 @@
+pipeline {
+    agent any
+
+    environment {
+        COBOL_FILE = 'ejemplo-unisys.cobol' // Nombre del archivo COBOL a analizar
+    }
+
+    stages {
+        stage('Preparar Entorno') {
+            steps {
+                echo 'Preparando entorno para análisis de COBOL...'
+                sh 'touch variables_detectadas.txt' // Archivo temporal para guardar las variables detectadas
+            }
+        }
+
+        stage('Análisis de Variables en COBOL') {
+            steps {
+                echo "Analizando el archivo ${env.COBOL_FILE}..."
+                // Ejecuta el análisis del archivo COBOL con un script en Bash
+                script {
+                    def result = sh(script: "bash analizar_cobol.sh ${env.COBOL_FILE}", returnStatus: true)
+                    if (result != 0) {
+                        error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
+                    }
+                }
+            }
+        }
+    }
+}
