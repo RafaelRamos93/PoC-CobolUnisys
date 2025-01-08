@@ -1,10 +1,30 @@
 pipeline {
     agent any
-    
+    environment {
+        COBOL_DIR = '${env.WORKSPACE}' // Carpeta donde se descargarán los archivos COBOL
+    }
+
     stages {
         stage('Obtener el proyecto') {
             steps {
                 git branch: 'main', poll: false, url: 'https://github.com/RafaelRamos93/PoC-CobolUnisys.git'
+            }
+        }
+        stage('Preparar Entorno') {
+            steps {
+                echo 'Preparando el entorno para el análisis...'
+                sh 'touch variables_detectadas.txt'
+            }
+        }
+        stage('Análisis de Variables en COBOL (Bash)') {
+            steps {
+                echo "Analizando archivos COBOL en ${env.COBOL_DIR} usando Bash..."
+                script {
+                    def result = sh(script: "bash analizar_cobol.sh ${env.COBOL_DIR}", returnStatus: true)
+                    if (result != 0) {
+                        error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
+                    }
+                }
             }
         }
     }
