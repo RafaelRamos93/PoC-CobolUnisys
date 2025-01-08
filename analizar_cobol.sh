@@ -11,6 +11,8 @@ for archivo in $(find "$(pwd)" -type f \( -name "*.cobol" -o -name "*.cbl" \)); 
   en_data_division=false
 
   while IFS= read -r linea; do
+    num_linea=$((num_linea + 1))
+
     # Detectar DATA DIVISION
     if [[ "$linea" =~ DATA\ DIVISION ]]; then
       en_data_division=true
@@ -38,7 +40,7 @@ for archivo in $(find "$(pwd)" -type f \( -name "*.cobol" -o -name "*.cbl" \)); 
       destino_tam=$(grep "^$destino " "$temp_file" | awk '{print $2}')
 
       if [[ -n "$origen_tam" && -n "$destino_tam" && "$origen_tam" -gt "$destino_tam" ]]; then
-        echo "Error: $origen (tamaño $origen_tam) no cabe en $destino (tamaño $destino_tam)."
+        echo "Error en archivo $archivo, línea $num_linea: $origen (tamaño $origen_tam) no cabe en $destino (tamaño $destino_tam)."
         ((errores++))
       fi
     fi
