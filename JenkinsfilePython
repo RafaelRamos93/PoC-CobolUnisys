@@ -1,29 +1,10 @@
 pipeline {
     agent any
 
-    environment {
-        COBOL_FILE = 'ejemplo-unisys.cobol' // Nombre del archivo COBOL a analizar
-    }
-
-    stages {
-        stage('Preparar Entorno') {
+   stages {
+        stage('Obtener el proyecto') {
             steps {
-                echo 'Instalando herramientas necesarias...'
-                // Asegúrate de que tienes Python instalado para realizar el análisis
-                sh 'sudo apt-get install -y python3'
-            }
-        }
-
-        stage('Análisis de Variables en COBOL') {
-            steps {
-                echo "Analizando el archivo ${env.COBOL_FILE}..."
-                // Ejecuta un script Python para realizar el análisis
-                script {
-                    def result = sh(script: "python3 analizar_cobol.py ${env.COBOL_FILE}", returnStatus: true)
-                    if (result != 0) {
-                        error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
-                    }
-                }
+                git branch: 'main', poll: false, url: 'https://github.com/RafaelRamos93/PoC-CobolUnisys.git'
             }
         }
     }
