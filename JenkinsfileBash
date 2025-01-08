@@ -22,10 +22,11 @@ pipeline {
                 script {
                     dir("${WORKSPACE}") {
                         //def result = sh(script: "bash analizar_cobol.sh ", returnStatus: true)
-
-                        if (result != 0) {
+                        sh 'chmod +x analizar_cobol.sh'
+                        sh './analizar_cobol.sh'
+                        /*if (result != 0) {
                             error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
-                        }
+                        }*/
                     }
                 }
             }
