@@ -20,9 +20,11 @@ pipeline {
             steps {
                 echo "Analizando archivos COBOL en ${env.COBOL_DIR} usando Bash..."
                 script {
-                    def result = sh(script: "bash analizar_cobol.sh ${env.COBOL_DIR}", returnStatus: true)
-                    if (result != 0) {
-                        error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
+                    dir(${WORKSPACE}) {
+                        def result = sh(script: "bash analizar_cobol.sh ", returnStatus: true)
+                        if (result != 0) {
+                            error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
+                        }
                     }
                 }
             }
