@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        COBOL_DIR = '${env.WORKSPACE}' // Carpeta donde se descargarán los archivos COBOL
+        COBOL_DIR = '${WORKSPACE}' // Carpeta donde se descargarán los archivos COBOL
     }
 
     stages {
