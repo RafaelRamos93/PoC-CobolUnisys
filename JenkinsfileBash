@@ -22,8 +22,8 @@ pipeline {
                 script {
                     dir("${WORKSPACE}") {
                         //def result = sh(script: "bash analizar_cobol.sh ", returnStatus: true)
-                        sh 'chmod +x analizar_cobol.sh'
-                        sh './analizar_cobol.sh'
+                        sh 'chmod +x analizar_cobol_json.sh'
+                        sh './analizar_cobol_json.sh'
                         /*if (result != 0) {
                             error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
                         }*/
