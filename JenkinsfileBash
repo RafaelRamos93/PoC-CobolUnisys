@@ -18,16 +18,16 @@ pipeline {
     }
 
     stages {
-        stage('Obtener el proyecto') {
-            steps {
-                git branch: 'main', poll: false, url: 'https://github.com/RafaelRamos93/PoC-CobolUnisys.git'
-            }
-        }
         stage('Preparar Entorno') {
             steps {
                 cleanWs();
                 echo 'Preparando el entorno para el análisis...'
                 sh 'touch variables_detectadas.txt'
+            }
+        }
+        stage('Obtener el proyecto') {
+            steps {
+                git branch: 'main', poll: false, url: 'https://github.com/RafaelRamos93/PoC-CobolUnisys.git'
             }
         }
         stage('Análisis de Variables en COBOL (Bash)') {
