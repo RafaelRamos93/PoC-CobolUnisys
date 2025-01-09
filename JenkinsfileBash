@@ -1,5 +1,18 @@
 pipeline {
     agent any
+
+    parameters {
+        choice (
+            name: 'ANALYZE', 
+            choices: [
+                'Analizar_Cobol.sh', 
+                'Analizar_Cobol_JSON.sh', 
+                'Analizar_Cobol_Tipo.sh',
+                'Analizar_Compuestas.sh',
+                'Analizar_General.sh'], 
+            description: 'Selecciona el entorno'
+        )
+    }
     environment {
         COBOL_DIR = '${WORKSPACE}' // Carpeta donde se descargarán los archivos COBOL
     }
@@ -12,6 +25,7 @@ pipeline {
         }
         stage('Preparar Entorno') {
             steps {
+                cleanWs();
                 echo 'Preparando el entorno para el análisis...'
                 sh 'touch variables_detectadas.txt'
             }
@@ -19,11 +33,26 @@ pipeline {
         stage('Análisis de Variables en COBOL (Bash)') {
             steps {
                 echo "Analizando archivos COBOL en ${env.COBOL_DIR} usando Bash..."
+                echo "PARAMETRO DE SELECCION: ${params.ANALYZE}"
                 script {
                     dir("${WORKSPACE}") {
                         //def result = sh(script: "bash analizar_cobol.sh ", returnStatus: true)
-                        sh 'chmod +x analizar_cobol_json.sh'
-                        sh './analizar_cobol_json.sh'
+                        if (params.ANALYZE == 'Analizar_Cobol.sh') {
+                            sh 'chmod +x analizar_cobol.sh'
+                            sh './analizar_cobol.sh'
+                        } else if (params.ANALYZE == 'Analizar_Cobol_JSON.sh') {
+                            sh 'chmod +x analizar_cobol_json.sh'
+                            sh './analizar_cobol_json.sh'
+                        } else if (params.ANALYZE == 'Analizar_Cobol_Tipo.sh') {
+                            sh 'chmod +x analizar_cobol_tipo.sh'
+                            sh './analizar_cobol_tipo.sh'
+                        } else if (params.ANALYZE == 'Analizar_Compuestas.sh') {
+                            sh 'chmod +x analizar_compuestas.sh'
+                            sh './analizar_compuestas.sh'
+                        } else if (params.ANALYZE == 'Analizar_General.sh') {
+                            sh 'chmod +x analizar_general.sh'
+                            sh './analizar_general.sh'
+                        }
                         /*if (result != 0) {
                             error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
                         }*/
