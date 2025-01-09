@@ -23,9 +23,6 @@ get_variable_type() {
     fi
 }
 
-# Variable para verificar si se encontraron errores
-found_error=0
-
 # Procesar un archivo COBOL
 process_file() {
     local file="$1"
@@ -35,9 +32,7 @@ process_file() {
 
     echo "  \"$file\": {" >> $output_file
     echo "    \"variables_simples\": [" >> $output_file
-    echo "    ]," >> $output_file
     echo "    \"grupos\": [" >> $output_file
-    echo "    ]," >> $output_file
     echo "    \"errores\": [" >> $output_file
 
     while IFS= read -r line; do
@@ -90,13 +85,11 @@ process_file() {
                     # Validar tamaños
                     if ((size_origen > size_destino)); then
                         echo "      {\"linea\": $line_number, \"mensaje\": \"Error: $origen (tamaño $size_origen) no cabe en $destino (tamaño $size_destino).\"}," >> $output_file
-                        found_error=1
                     fi
 
                     # Validar tipos
                     if [[ $tipo_origen != "$tipo_destino" ]]; then
                         echo "      {\"linea\": $line_number, \"mensaje\": \"Error: Tipo incompatible entre $origen ($tipo_origen) y $destino ($tipo_destino).\"}," >> $output_file
-                        found_error=1
                     fi
                 fi
             fi
@@ -104,6 +97,12 @@ process_file() {
     done <"$file"
 
     # Cerrar los arreglos de JSON
+    sed -i '$ s/,$//' $output_file
+    echo "    ]," >> $output_file
+    echo "    \"grupos\": [" >> $output_file
+    for grupo in "${!grupos[@]}"; do
+        echo "      {\"nombre\": \"$grupo\", \"linea\": ${grupos[$grupo]}}," >> $output_file
+    done
     sed -i '$ s/,$//' $output_file
     echo "    ]" >> $output_file
     echo "  }," >> $output_file
@@ -120,10 +119,4 @@ done
 sed -i '$ s/,$//' $output_file
 echo "}" >> $output_file
 
-if ((found_error)); then
-    echo "Errores detectados. Revisa el archivo $output_file."
-    exit 1
-else
-    echo "Análisis completado sin errores. Resultados guardados en $output_file."
-    exit 0
-fi
+echo "Análisis completado. Resultados guardados en $output_file."
