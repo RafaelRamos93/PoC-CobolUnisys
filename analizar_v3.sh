@@ -39,7 +39,9 @@ analyze_cobol_file() {
     done < "$cobol_file"
 
     # Construir JSON para el archivo
-    echo "{\"file\": \"$cobol_file\", \"simple_vars\": [${simple_vars[*]}], \"composite_vars\": [${composite_vars[*]}]}"
+    # Añadir las variables sencillas y compuestas en formato adecuado
+    echo "{\"file\": \"$cobol_file\", \"simple_vars\": [$(IFS=,; echo "${simple_vars[*]}")], \"composite_vars\": [$(IFS=,; echo "${composite_vars[*]}")]}"
+
 }
 
 # Directorio de búsqueda (predeterminado a pwd si no se proporciona)
@@ -52,7 +54,7 @@ if [[ ! -d $SEARCH_DIR ]]; then
     exit 1
 fi
 
-# Inicializar JSON
+# Inicializar el JSON de salida
 echo "[" > "$OUTPUT_FILE"
 first_file=true
 
@@ -62,7 +64,7 @@ for cobol_file in "$SEARCH_DIR"/*.cbl; do
         if [[ $first_file == false ]]; then
             echo "," >> "$OUTPUT_FILE"
         fi
-        analyze_cobol_file "$cobol_file" | jq '.' >> "$OUTPUT_FILE"
+        analyze_cobol_file "$cobol_file" >> "$OUTPUT_FILE"
         first_file=false
     fi
 done
@@ -70,7 +72,7 @@ done
 # Cerrar JSON
 echo "]" >> "$OUTPUT_FILE"
 
-# Formatear el archivo JSON final
+# Formatear el archivo JSON final usando jq para asegurarse de que está bien estructurado
 jq '.' "$OUTPUT_FILE" > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 
 # Mensaje final
