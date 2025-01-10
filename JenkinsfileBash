@@ -10,7 +10,8 @@ pipeline {
                 'Analizar_Cobol_Tipo.sh',
                 'Analizar_Compuestas.sh',
                 'Analizar_General.sh',
-                'Analizar_CobolV2.sh'], 
+                'Analizar_CobolV2.sh',
+                'Analizar_V3.sh'], 
             description: 'Selecciona el entorno'
         )
     }
@@ -56,6 +57,9 @@ pipeline {
                         } else if (params.ANALYZE == 'Analizar_CobolV2.sh') {
                             sh 'chmod +x analizar_cobolV2.sh'
                             sh './analizar_cobolV2.sh'
+                        } else if (params.ANALYZE == 'Analizar_V3.sh') {
+                            sh 'chmod +x analizar_v3.sh'
+                            sh './analizar_v3.sh'
                         }
                         /*if (result != 0) {
                             error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
