@@ -4,9 +4,9 @@
 analyze_cobol_file() {
     local cobol_file="$1"
     local current_line=0
-    local current_composite=""
     local simple_vars=()
     local composite_vars=()
+    local current_composite=""
     local subvars=()
 
     while IFS= read -r line || [ -n "$line" ]; do
@@ -15,30 +15,30 @@ analyze_cobol_file() {
         line=$(echo "$line" | sed 's/^[ \t]*//;s/[ \t]*$//')
 
         # Detectar variables de nivel (01, 05, 10, 66, 77, 88)
-        if [[ $line =~ ^(01|05|10|66|77|88)\ ([A-Z0-9-]+)(\.*)(.*)$ ]]; then
+        if [[ $line =~ ^(01|05|10|66|77|88)\ ([A-Z0-9-]+)\.? ]]; then
             level="${BASH_REMATCH[1]}"
             name="${BASH_REMATCH[2]}"
-            rest="${BASH_REMATCH[4]}"
 
             # Si contiene PIC, es una variable simple
-            if [[ $rest =~ PIC\ ([A9X]+)\(([0-9]+)\) ]]; then
+            if [[ $line =~ PIC\ ([A9X]+)\(([0-9]+)\) ]]; then
                 type="${BASH_REMATCH[1]}"
                 size="${BASH_REMATCH[2]}"
                 simple_vars+=("{\"name\": \"$name\", \"line\": $current_line, \"type\": \"$type\", \"size\": $size}")
             # Si no tiene PIC, es una variable compuesta
             elif [[ $level -lt 77 ]]; then
-                composite_vars+=("{\"name\": \"$name\", \"line\": $current_line, \"level\": $level, \"subvars\": []}")
-                current_composite="${#composite_vars[@]}" # Índice del compuesto actual
+                composite_vars+=("{\"name\": \"$name\", \"line\": $current_line, \"level\": \"$level\", \"subvars\": []}")
+                current_composite=$(( ${#composite_vars[@]} - 1 ))
             fi
-        elif [[ -n $current_composite && $line =~ ^[0-9]+\ ([A-Z0-9-]+)(.*)$ ]]; then
+        # Si es una subvariable de un compuesto actual
+        elif [[ -n $current_composite && $line =~ ^[0-9]+\ ([A-Z0-9-]+).* ]]; then
             sub_name="${BASH_REMATCH[1]}"
-            sub_line="$current_line"
-            subvars+=("{\"name\": \"$sub_name\", \"line\": $sub_line}")
-            composite_vars[$((current_composite - 1))]=$(echo "${composite_vars[$((current_composite - 1))]}" | jq ".subvars += [{\"name\": \"$sub_name\", \"line\": $sub_line}]")
+            subvars+=("{\"name\": \"$sub_name\", \"line\": $current_line}")
+            # Agregar subvariable al compuesto actual
+            composite_vars[$current_composite]=$(echo "${composite_vars[$current_composite]}" | jq ".subvars += [{\"name\": \"$sub_name\", \"line\": $current_line}]")
         fi
     done < "$cobol_file"
 
-    # Convertir resultados a JSON
+    # Construir JSON para el archivo
     echo "{\"file\": \"$cobol_file\", \"simple_vars\": [${simple_vars[*]}], \"composite_vars\": [${composite_vars[*]}]}"
 }
 
