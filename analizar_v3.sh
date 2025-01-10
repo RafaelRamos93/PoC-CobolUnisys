@@ -7,24 +7,24 @@ analyze_cobol_file() {
     local current_composite=""
     local simple_vars=()
     local composite_vars=()
+    local subvars=()
 
     while IFS= read -r line || [ -n "$line" ]; do
         ((current_line++))
         # Eliminar espacios al inicio y al final
         line=$(echo "$line" | sed 's/^[ \t]*//;s/[ \t]*$//')
 
-        # Detectar variables de nivel (01, 05, 10, etc.)
+        # Detectar variables de nivel (01, 05, 10, 66, 77, 88)
         if [[ $line =~ ^(01|05|10|66|77|88)\ ([A-Z0-9-]+)(\.*)(.*)$ ]]; then
             level="${BASH_REMATCH[1]}"
             name="${BASH_REMATCH[2]}"
             rest="${BASH_REMATCH[4]}"
 
             # Si contiene PIC, es una variable simple
-            if [[ $rest =~ PIC\ ([A9X9]+)\(([0-9]+)\) ]]; then
+            if [[ $rest =~ PIC\ ([A9X]+)\(([0-9]+)\) ]]; then
                 type="${BASH_REMATCH[1]}"
                 size="${BASH_REMATCH[2]}"
                 simple_vars+=("{\"name\": \"$name\", \"line\": $current_line, \"type\": \"$type\", \"size\": $size}")
-                current_composite=""
             # Si no tiene PIC, es una variable compuesta
             elif [[ $level -lt 77 ]]; then
                 composite_vars+=("{\"name\": \"$name\", \"line\": $current_line, \"level\": $level, \"subvars\": []}")
@@ -33,6 +33,7 @@ analyze_cobol_file() {
         elif [[ -n $current_composite && $line =~ ^[0-9]+\ ([A-Z0-9-]+)(.*)$ ]]; then
             sub_name="${BASH_REMATCH[1]}"
             sub_line="$current_line"
+            subvars+=("{\"name\": \"$sub_name\", \"line\": $sub_line}")
             composite_vars[$((current_composite - 1))]=$(echo "${composite_vars[$((current_composite - 1))]}" | jq ".subvars += [{\"name\": \"$sub_name\", \"line\": $sub_line}]")
         fi
     done < "$cobol_file"
@@ -51,7 +52,7 @@ if [[ ! -d $SEARCH_DIR ]]; then
     exit 1
 fi
 
-# Inicializar archivo JSON
+# Inicializar JSON
 echo "[" > "$OUTPUT_FILE"
 first_file=true
 
@@ -61,13 +62,16 @@ for cobol_file in "$SEARCH_DIR"/*.cbl; do
         if [[ $first_file == false ]]; then
             echo "," >> "$OUTPUT_FILE"
         fi
-        analyze_cobol_file "$cobol_file" >> "$OUTPUT_FILE"
+        analyze_cobol_file "$cobol_file" | jq '.' >> "$OUTPUT_FILE"
         first_file=false
     fi
 done
 
-# Cerrar el archivo JSON
+# Cerrar JSON
 echo "]" >> "$OUTPUT_FILE"
+
+# Formatear el archivo JSON final
+jq '.' "$OUTPUT_FILE" > "${OUTPUT_FILE}.tmp" && mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 
 # Mensaje final
 echo "Análisis completado. Resultados guardados en $OUTPUT_FILE"
