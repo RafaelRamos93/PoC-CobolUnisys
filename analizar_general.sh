@@ -35,10 +35,13 @@ process_file() {
 
     echo "  \"$file\": {" >> $output_file
     echo "    \"variables_simples\": [" >> $output_file
+    local first_simple=1
     echo "    ]," >> $output_file
     echo "    \"grupos\": [" >> $output_file
+    local first_group=1
     echo "    ]," >> $output_file
     echo "    \"errores\": [" >> $output_file
+    local first_error=1
 
     while IFS= read -r line; do
         line_number=$((line_number + 1))
@@ -58,72 +61,96 @@ process_file() {
 
         # Procesar variables en DATA DIVISION
         if ((in_data_division)); then
-            if [[ $line =~ ^([0-9]+)\ ([A-Z0-9-]+)\ +PIC\ +([A-Z0-9()V]+) ]]; then
+            if [[ $line =~ ^([0-9]+)\ ([A-Z0-9-]+)\ +(PIC\ ([A-Z0-9()V]+))? ]]; then
                 local nivel="${BASH_REMATCH[1]}"
                 local nombre="${BASH_REMATCH[2]}"
-                local pic="${BASH_REMATCH[3]}"
-                local tipo
-                tipo=$(get_variable_type "$pic")
-                local size="${#pic}"
+                local pic="${BASH_REMATCH[4]}"
+                local tipo size
 
-                variables["$nombre"]="$tipo:$size:$nivel"
-
-                # Si es un nivel 1, es un grupo
-                if [[ $nivel -eq 1 ]]; then
-                    grupos["$nombre"]="$line_number"
+                # Determinar tipo y tamaño solo si tiene PIC
+                if [[ -n $pic ]]; then
+                    tipo=$(get_variable_type "$pic")
+                    size="${#pic}"
+                else
+                    tipo="grupo"
+                    size=0
                 fi
 
-                echo "      {\"nombre\": \"$nombre\", \"linea\": $line_number, \"tamaño\": \"$size\", \"tipo\": \"$tipo\"}," >> $output_file
+                if [[ $tipo == "grupo" ]]; then
+                    # Añadir como grupo
+                    if ((first_group)); then
+                        first_group=0
+                    else
+                        echo "      ," >> $output_file
+                    fi
+                    echo "      {\"nombre\": \"$nombre\", \"linea\": $line_number}" >> $output_file
+                    grupos["$nombre"]="$nivel"
+                else
+                    # Añadir como variable simple
+                    if ((first_simple)); then
+                        first_simple=0
+                    else
+                        echo "      ," >> $output_file
+                    fi
+                    echo "      {\"nombre\": \"$nombre\", \"tipo\": \"$tipo\", \"tamaño\": $size, \"linea\": $line_number}" >> $output_file
+                    variables["$nombre"]="$tipo:$size"
+                fi
             fi
         fi
 
-        # Validar movimientos en PROCEDURE DIVISION
+        # Validar asignaciones en PROCEDURE DIVISION
         if ((in_procedure_division)); then
             if [[ $line =~ MOVE\ ([A-Z0-9-]+)\ TO\ ([A-Z0-9-]+) ]]; then
-                local origen="${BASH_REMATCH[1]}"
-                local destino="${BASH_REMATCH[2]}"
+                local var_from="${BASH_REMATCH[1]}"
+                local var_to="${BASH_REMATCH[2]}"
+                local from_info="${variables[$var_from]}"
+                local to_info="${variables[$var_to]}"
 
-                if [[ -n ${variables[$origen]} && -n ${variables[$destino]} ]]; then
-                    IFS=':' read -r tipo_origen size_origen nivel_origen <<<"${variables[$origen]}"
-                    IFS=':' read -r tipo_destino size_destino nivel_destino <<<"${variables[$destino]}"
-
-                    # Validar tamaños
-                    if ((size_origen > size_destino)); then
-                        echo "      {\"linea\": $line_number, \"mensaje\": \"Error: $origen (tamaño $size_origen) no cabe en $destino (tamaño $size_destino).\"}," >> $output_file
-                        found_error=1
+                if [[ -z $from_info || -z $to_info ]]; then
+                    # Error: Variable no definida
+                    if ((first_error)); then
+                        first_error=0
+                    else
+                        echo "      ," >> $output_file
                     fi
-
-                    # Validar tipos
-                    if [[ $tipo_origen != "$tipo_destino" ]]; then
-                        echo "      {\"linea\": $line_number, \"mensaje\": \"Error: Tipo incompatible entre $origen ($tipo_origen) y $destino ($tipo_destino).\"}," >> $output_file
+                    echo "      {\"error\": \"Asignación con variable no definida\", \"linea\": $line_number, \"detalle\": \"MOVE $var_from TO $var_to\"}" >> $output_file
+                    found_error=1
+                else
+                    # Comparar tipo y tamaño
+                    IFS=':' read -r from_type from_size <<< "$from_info"
+                    IFS=':' read -r to_type to_size <<< "$to_info"
+                    if [[ $from_type != $to_type || $from_size -gt $to_size ]]; then
+                        if ((first_error)); then
+                            first_error=0
+                        else
+                            echo "      ," >> $output_file
+                        fi
+                        echo "      {\"error\": \"Asignación incompatible\", \"linea\": $line_number, \"detalle\": \"MOVE $var_from TO $var_to\", \"from_tipo\": \"$from_type\", \"to_tipo\": \"$to_type\"}" >> $output_file
                         found_error=1
                     fi
                 fi
             fi
         fi
-    done <"$file"
+    done < "$file"
 
-    # Cerrar los arreglos de JSON
-    sed -i '$ s/,$//' $output_file
     echo "    ]" >> $output_file
     echo "  }," >> $output_file
 }
 
 # Procesar todos los archivos COBOL en el directorio actual
-for file in *.cobol *.cbl; do
-    if [[ -f "$file" ]]; then
-        process_file "$file"
-    fi
+for file in $(find . -type f -name "*.cbl"); do
+    process_file "$file"
 done
 
 # Cerrar el archivo JSON
 sed -i '$ s/,$//' $output_file
 echo "}" >> $output_file
 
+# Verificar si hubo errores y detener el pipeline
 if ((found_error)); then
-    echo "Errores detectados. Revisa el archivo $output_file."
+    echo "Errores detectados durante el análisis. Deteniendo pipeline."
     exit 1
 else
-    echo "Análisis completado sin errores. Resultados guardados en $output_file."
+    echo "Análisis completado sin errores."
     exit 0
 fi
