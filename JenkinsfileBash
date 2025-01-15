@@ -60,6 +60,9 @@ pipeline {
                         } else if (params.ANALYZE == 'Analizar_V3.sh') {
                             sh 'chmod +x analizar_v3.sh'
                             sh './analizar_v3.sh'
+                        } else if (params.ANALYZE == 'Analizar_V4.sh') {
+                            sh 'chmod +x analizar_v4.sh'
+                            sh './analizar_v4.sh'
                         }
                         /*if (result != 0) {
                             error("Se detectaron inconsistencias en las variables. Deteniendo el pipeline.")
