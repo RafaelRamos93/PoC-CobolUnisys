@@ -11,7 +11,8 @@ pipeline {
                 'Analizar_Compuestas.sh',
                 'Analizar_General.sh',
                 'Analizar_CobolV2.sh',
-                'Analizar_V3.sh'], 
+                'Analizar_V3.sh',
+                'Analizar_V4.sh'], 
             description: 'Selecciona el entorno'
         )
     }
